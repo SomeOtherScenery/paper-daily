@@ -1,0 +1,56 @@
+name: Daily Paper Fetcher
+
+on:
+  schedule:
+    - cron: '0 16 * * *' # 国际标准时间 16:00 (北京时间 00:00) 运行
+  workflow_dispatch:     # 允许手动点击运行
+
+# 设置权限，允许部署到 GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 部署配置
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. 检出代码
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2. 安装 uv (这一步是关键)
+      - name: Install uv
+        uses: astral-sh/setup-uv@v1
+        with:
+          version: "latest"
+          
+      # 3. 使用 uv 安装依赖（从 pyproject.toml）
+      - name: Install dependencies
+        run: uv sync
+      
+      # 4. 运行脚本 (注意：uv run 会自动使用虚拟环境运行)
+      - name: Run script
+        run: uv run python main.py
+
+      # 5. 部署到 GitHub Pages
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./ # 上传根目录下的 index.html
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
