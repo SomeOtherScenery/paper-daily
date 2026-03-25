@@ -42,7 +42,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./ # 上传根目录下的 index.html
+          path: ./result # 上传result目录下的 index.html
 
   deploy:
     environment:
