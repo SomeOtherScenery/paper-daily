@@ -3,6 +3,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 import os
 import time
 from datetime import datetime
+from pathlib import Path
 
 # 1. 配置
 # SEARCH_QUERY = "cat:cs.AI"  # 例如：搜索人工智能类别
@@ -80,8 +81,11 @@ def main():
     print(f"抓取到 {len(papers)} 篇论文。")
     
     html_content = generate_html(papers)
-    
-    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+
+    output_path = Path(OUTPUT_FILE)
+    output_path.parent.mkdir(parents=True, exist_ok=True)  # 确保输出目录存在
+
+    with open(output_path, "w", encoding="utf-8") as f:
         f.write(html_content)
     
     print(f"成功生成 {OUTPUT_FILE}")
