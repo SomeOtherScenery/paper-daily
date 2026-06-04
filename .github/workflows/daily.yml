@@ -36,6 +36,12 @@ jobs:
       
       # 4. 运行脚本 (注意：uv run 会自动使用虚拟环境运行)
       - name: Run script
+        env:
+          ENABLE_ABSTRACT_TRANSLATION: ${{ secrets.DEEPSEEK_API_KEY != '' && 'true' || 'false' }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          DEEPSEEK_MODEL: ${{ vars.DEEPSEEK_MODEL || 'deepseek-v4-flash' }}
+          DEEPSEEK_API_BASE: ${{ vars.DEEPSEEK_API_BASE || 'https://api.deepseek.com' }}
+          TRANSLATION_TARGET_LANGUAGE: ${{ vars.TRANSLATION_TARGET_LANGUAGE || 'Simplified Chinese' }}
         run: uv run python main.py
 
       # 5. 部署到 GitHub Pages
