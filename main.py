@@ -18,6 +18,7 @@ OUTPUT_FILE = "result/index.html"
 TRANSLATION_CACHE_FILE = "result/translation_cache.json"
 MAX_FETCH_RETRIES = 5
 INITIAL_BACKOFF_SECONDS = 5
+ARXIV_RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
 TRANSLATION_REQUEST_TIMEOUT = 30
 TRANSLATION_MAX_RETRIES = 3
 PROJECT_ROOT = Path(__file__).resolve().parent
@@ -111,6 +112,13 @@ def get_code_url(arxiv_result):
     return None
 
 
+def get_http_status_code(error):
+    match = re.search(r"HTTP (\d{3})", str(error))
+    if match:
+        return int(match.group(1))
+    return None
+
+
 def fetch_papers():
     client = arxiv.Client(
         page_size=min(MAX_RESULTS, 50),
@@ -130,11 +138,13 @@ def fetch_papers():
             results = list(client.results(search))
             break
         except arxiv.HTTPError as exc:
-            is_rate_limited = "HTTP 429" in str(exc)
-            if (not is_rate_limited) or attempt == MAX_FETCH_RETRIES:
+            status_code = get_http_status_code(exc)
+            is_retryable = status_code in ARXIV_RETRYABLE_STATUS_CODES
+            if (not is_retryable) or attempt == MAX_FETCH_RETRIES:
                 raise
             print(
-                f"arXiv API rate limit reached (attempt {attempt}/{MAX_FETCH_RETRIES}). "
+                f"arXiv API temporary error {status_code} "
+                f"(attempt {attempt}/{MAX_FETCH_RETRIES}). "
                 f"Retrying in {backoff_seconds}s..."
             )
             time.sleep(backoff_seconds)
@@ -300,8 +310,15 @@ def main():
         # papers = get_hot_papers(KEYWORDS)
         papers = fetch_papers()
     except arxiv.HTTPError as exc:
+        status_code = get_http_status_code(exc)
         print(f"Fetch failed: {exc}")
-        print("Hint: this may be an arXiv 429 rate-limit error. Please retry later.")
+        if status_code in ARXIV_RETRYABLE_STATUS_CODES:
+            print(
+                "Hint: arXiv returned a temporary error "
+                f"({status_code}). The workflow can usually succeed on a later retry."
+            )
+        else:
+            print("Hint: arXiv returned a non-retryable error. Please inspect the query or API status.")
         return
 
     print(f"Fetched {len(papers)} papers.")
